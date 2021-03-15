@@ -14,8 +14,9 @@ bool Dominates(int a, int b)
 int main()
 {
     size_t populationSize = 4;
+    int startPoint = 3;
     std::vector<int> population(populationSize);
-    std::iota(population.begin(), population.end(), populationSize);
+    std::iota(population.begin(), population.end(), startPoint);
 
     std::map<size_t, size_t> strength; // strength[p] == count of individual p dominates
     std::map<size_t, std::set<size_t> > dominated; //dominated[p] == {Indexes in population who dominate p}
