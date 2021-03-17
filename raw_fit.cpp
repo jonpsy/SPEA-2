@@ -3,6 +3,7 @@
 
 /**
  * @brief A sample code for rawFitness function
+ * g++ raw_fit.cpp -g -o raw_fit -larmadillo && ./raw_fit
  */
 using namespace std;
 
@@ -18,12 +19,11 @@ int main()
     std::vector<int> population(populationSize);
     std::iota(population.begin(), population.end(), startPoint);
 
-    std::map<size_t, size_t> strength; // strength[p] == count of individual p dominates
+    arma::uvec strength(populationSize, arma::fill::zeros); // strength[p] == count of individual p dominates
     std::map<size_t, std::set<size_t> > dominated; //dominated[p] == {Indexes in population who dominate p}
 
     for(size_t candidateP = 0; candidateP < populationSize; candidateP++)
     {
-        strength[candidateP] = 0;
         dominated[candidateP] = std::set<size_t>{};
 
         for(size_t candidateQ = 0; candidateQ < populationSize; candidateQ++)
@@ -35,7 +35,7 @@ int main()
         }
     }
 
-    std::vector<double> rawFitness(populationSize);
+    arma::vec rawFitness(populationSize, arma::fill::zeros);
 
     for(size_t candidate =0; candidate < populationSize; candidate++)
     {
