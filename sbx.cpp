@@ -7,6 +7,8 @@
  * Appendix A : SBX
  * Inspired from NSGA-II Code by Deb in C
  * Gist: https://gist.github.com/Tiagoperes/1779d5f1c89bae0cfdb87b1960bba36d by @Tiagoperes
+ *
+ * g++ sbx.cpp -g -o sbx -larmadillo && ./sbx
  */
 
 // Variables global here are defined in class ctor or loop
@@ -19,11 +21,10 @@ arma::vec upperBound {10, 10};
 
 void enforceBounds(double& child, double lower, double upper)
 {
-  child = child < lower ? lower : child;
-  child = child > upper ? upper : child;
+  child = std::min(std::max(child, lower), upper);
 }
 
-void SimulatedBinaryCrossover(arma::vec parentA, arma::vec parentB, arma::vec& childA, arma::vec& childB)
+void SimulatedBinaryCrossover(const arma::vec& parentA,const arma::vec& parentB, arma::vec& childA, arma::vec& childB)
 {
   double recessiveGene;
   double dominantGene;
@@ -34,24 +35,22 @@ void SimulatedBinaryCrossover(arma::vec parentA, arma::vec parentB, arma::vec& c
     {
       if (arma::randu() <= 0.5) // 50% chance of gene changing value
       {
-        recessiveGene = (parentA[geneIdx] <  parentB[geneIdx])
-            ? parentA[geneIdx]
-            : parentB[geneIdx];
-        dominantGene = (parentA[geneIdx] > parentB[geneIdx])
-            ? parentA[geneIdx]
-            : parentB[geneIdx];
-
         if(std::fabs(parentA[geneIdx] - parentB[geneIdx]) > epsilon)
         {
-          double geneDiff = dominantGene - recessiveGene;
+
+          recessiveGene = std::min(parentA[geneIdx], parentB[geneIdx]);
+          dominantGene = std::max(parentA[geneIdx], parentB[geneIdx]);
+
+          double geneRange = dominantGene - recessiveGene;
+          double geneAverage = 0.5* (dominantGene + recessiveGene);
           // Calculate child A
-          double beta = 1. + 2. * (recessiveGene - lowerBound[geneIdx])/ geneDiff;
+          double beta = 1. + 2. * (recessiveGene - lowerBound[geneIdx])/ geneRange;
           double alpha = 2. - std::pow(beta, -(distributionIndex + 1.));
           double spreadFactor;
           double rand = arma::randu();
           if (rand <= 1./alpha)
           {
-          spreadFactor = std::pow(alpha * rand, 1./(distributionIndex + 1.));
+            spreadFactor = std::pow(alpha * rand, 1./(distributionIndex + 1.));
           }
           else
           {
@@ -59,11 +58,10 @@ void SimulatedBinaryCrossover(arma::vec parentA, arma::vec parentB, arma::vec& c
           }
 
           // Fill child A
-          childA[geneIdx] = 0.5 * ((dominantGene + recessiveGene) -
-              spreadFactor *(recessiveGene - dominantGene));
+          childA[geneIdx] = geneAverage - 0.5 * spreadFactor * geneRange;
 
           //Calculate for childB
-          beta = 1. + 2. * (upperBound[geneIdx] - dominantGene)/ geneDiff;
+          beta = 1. + 2. * (upperBound[geneIdx] - dominantGene)/ geneRange;
           alpha = 2. + std::pow(beta, -(distributionIndex + 1.));
 
           if (rand <= 1./alpha)
@@ -76,8 +74,7 @@ void SimulatedBinaryCrossover(arma::vec parentA, arma::vec parentB, arma::vec& c
           }
 
           //Fill childB
-          childB[geneIdx] = 0.5 * ((dominantGene + recessiveGene) +
-              spreadFactor *(recessiveGene + dominantGene));
+          childB[geneIdx] = geneAverage  + 0.5 * spreadFactor * geneRange;
 
           //Bound check
           enforceBounds(childA[geneIdx], lowerBound[geneIdx], upperBound[geneIdx]);
@@ -96,7 +93,7 @@ void SBX_Vectorised(arma::vec parentA, arma::vec parentB, arma::vec& childA, arm
  // Get genes from parentA where less + genes from when B less, when equal remains zero
   arma::vec recessiveGene = (parentA < parentB) % parentA + (parentB < parentA) % parentB;
   arma::vec dominantGene = (parentA > parentB) % parentA + (parentB > parentA) % parentB;
-  arma::vec geneDiff = (dominantGene - recessiveGene);   //Some value becomes nan (dominanteGene[i] == recessiveGene[i])
+  arma::vec geneRange = (dominantGene - recessiveGene);   //Some value becomes nan (dominanteGene[i] == recessiveGene[i])
   arma::vec beta = (1. + 2. * (recessiveGene - lowerBound)/ (dominantGene - recessiveGene));
   arma::vec alpha = 2. - arma::pow(beta, - (distributionIndex + 1.));
   arma::uvec idxSpreadFactor = arma::randu(2, 1) < 1./alpha;
