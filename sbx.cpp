@@ -12,9 +12,9 @@
  */
 
 // Variables global here are defined in class ctor or loop
-double crossoverProb = 1; //Keeping it very less for testing
+double crossoverProb = 1; // delta
+double spreadIndex = 2; // eta_c
 double epsilon = 1e-14;
-double distributionIndex = 2; // eta_c
 double numVariables = 5;
 arma::vec lowerBound {-10, -10, -10, -10, -10};
 arma::vec upperBound {10, 10, 10, 10, 10};
@@ -45,17 +45,17 @@ void SimulatedBinaryCrossover(const arma::vec& parentA,const arma::vec& parentB,
     //! Calculate gene for childA
     //! a) Variables for childA (recessive - lowerbound)
     double beta = 1. + 2. * (recessiveGene - lowerBound[geneIdx])/ geneRange;
-    double alpha = 2. - std::pow(beta, -(distributionIndex + 1.));
+    double alpha = 2. - std::pow(beta, -(spreadIndex + 1.));
     double spreadFactor;
     double rand = arma::randu();
     //! b) spreadFactor for bounded SBX
     if (rand <= 1./alpha)
     {
-      spreadFactor = std::pow(alpha * rand, 1./(distributionIndex + 1.));
+      spreadFactor = std::pow(alpha * rand, 1./(spreadIndex + 1.));
     }
     else
     {
-      spreadFactor = std::pow(1./(2. - rand * alpha), 1./(distributionIndex + 1.));
+      spreadFactor = std::pow(1./(2. - rand * alpha), 1./(spreadIndex + 1.));
     }
 
     //! c) Fill child A
@@ -64,15 +64,15 @@ void SimulatedBinaryCrossover(const arma::vec& parentA,const arma::vec& parentB,
     //! Calculate for childB
     //! a) Variables for childB (upperbound - dominant)
     beta = 1. + 2. * (upperBound[geneIdx] - dominantGene)/ geneRange;
-    alpha = 2. + std::pow(beta, -(distributionIndex + 1.));
+    alpha = 2. + std::pow(beta, -(spreadIndex + 1.));
     //! b) spreadFactor for bounded SBX
     if (rand <= 1./alpha)
     {
-      spreadFactor = std::pow(alpha * rand, 1./(distributionIndex + 1.));
+      spreadFactor = std::pow(alpha * rand, 1./(spreadIndex + 1.));
     }
     else
     {
-      spreadFactor = std::pow(1./(2. - rand * alpha), 1./(distributionIndex + 1.));
+      spreadFactor = std::pow(1./(2. - rand * alpha), 1./(spreadIndex + 1.));
     }
 
     //! c)Fill childB
@@ -94,9 +94,9 @@ void SBX_Vectorised(arma::vec parentA, arma::vec parentB, arma::vec& childA, arm
   arma::vec geneAverage = 0.5 * (parentA + parentB);
   arma::vec geneRange = (dominantGene - recessiveGene);   //Some value becomes nan (dominanteGene[i] == recessiveGene[i])
   arma::vec beta = (1. + 2. * (recessiveGene - lowerBound)/ (dominantGene - recessiveGene));
-  arma::vec alpha = 2. - arma::pow(beta, - (distributionIndex + 1.));
+  arma::vec alpha = 2. - arma::pow(beta, - (spreadIndex + 1.));
   arma::vec rand = arma::randu(2, 1);
-  arma::vec spreadFactor = arma::pow(alpha * rand, 1./(distributionIndex + 1.));
+  arma::vec spreadFactor = arma::pow(alpha * rand, 1./(spreadIndex + 1.));
   childA = geneAverage + 0.5 * spreadFactor * geneRange;
   childA = childA % (1 - idxEqual) + parentA % (1 - idxEqual); //nan replaced with parent
   // arma::vec spreadFactor = arma::pow(alpha * rand)
