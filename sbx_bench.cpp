@@ -15,16 +15,15 @@
 double crossoverProb = 1; // delta
 double spreadIndex = 2; // eta_c
 double epsilon = 1e-14;
-double numVariables = 5;
-arma::vec lowerBound {-10, -10, -10, -10, -10};
-arma::vec upperBound {10, 10, 10, 10, 10};
+arma::vec lowerBound;
+arma::vec upperBound;
 
 void enforceBounds(double& child, double lower, double upper)
 {
   child = std::min(std::max(child, lower), upper);
 }
 
-void SimulatedBinaryCrossover(const arma::vec& parentA,const arma::vec& parentB, arma::vec& childA, arma::vec& childB)
+void SimulatedBinaryCrossover(const arma::vec& parentA,const arma::vec& parentB, arma::vec& childA, arma::vec& childB, size_t numVariables, arma::vec& lowerBound, arma::vec& upperBound)
 {
 
   if (arma::randu() > crossoverProb) //Should I crossover?
@@ -84,15 +83,59 @@ void SimulatedBinaryCrossover(const arma::vec& parentA,const arma::vec& parentB,
   }
 }
 
+//! WIP
+void SBX_Vectorised(arma::vec parentA, arma::vec parentB, arma::vec& childA, arma::vec& childB, size_t numVariables, arma::vec& lowerBound, arma::vec& upperBound)
+{
+  arma::uvec idxEqual = (parentA == parentB);
+  arma::uvec idxChosen = (arma::randu(numVariables, 1) < 0.5);
+  arma::vec recessiveGene = arma::min(parentA, parentB);
+  arma::vec dominantGene = arma::max(parentA, parentB);
+  arma::vec geneAverage = 0.5 * (parentA + parentB);
+  arma::vec geneRange = (dominantGene - recessiveGene);   //Some value becomes nan (dominanteGene[i] == recessiveGene[i])
+  arma::vec beta = 1. + 2. * (recessiveGene - lowerBound)/ geneRange;
+  arma::vec alpha = 2. - arma::pow(beta, - (spreadIndex + 1.));
+  arma::vec rand = arma::randu(numVariables, 1);
+  arma::vec spreadFactor = arma::pow(alpha % rand, 1./(spreadIndex + 1.));
+  childA = geneAverage - 0.5 * spreadFactor % geneRange;
+  childA = childA %  (1 - idxEqual) + parentA % idxEqual; //nan replaced with parent
+  childA = childA % idxChosen + parentA % (1 - idxChosen);
+
+  //ChildB
+  beta = 1. + 2. * (upperBound - dominantGene)/ geneRange;
+  alpha = 2. + arma::pow(beta, -(spreadIndex + 1.));
+  spreadFactor = arma::pow(alpha % rand, 1./(spreadIndex + 1.));
+  childB = geneAverage + 0.5 * spreadFactor % geneRange;
+  childB = childB % (1 - idxEqual) + parentB % idxEqual;
+  childB = childB % idxChosen + parentB % (1 - idxChosen);
+}
+
 int main()
 {
-  arma::vec parentA {1., 2. ,3., 4., 5., 6.};
-  arma::vec parentB {1., 4., 7., 8., 9., 10.};
+  size_t numVariables =  1000;
+  arma::vec parentA   = arma::vec(numVariables, arma::fill::randu);
+  arma::vec parentB  = arma::vec(numVariables, arma::fill::randu);
+  arma::vec childAVec = parentA;
+  arma::vec childBVec = parentB;
   arma::vec childA = parentA;
   arma::vec childB = parentB;
+  arma::vec lowerBound(numVariables, 1);
+  lowerBound.fill(-10);
+  arma::vec upperBound(numVariables, 1);
+  upperBound.fill(+10);
 
-  SimulatedBinaryCrossover(parentA, parentB, childA, childB);
+  arma::wall_clock timer_normal;
+  timer_normal.tic();
+  SimulatedBinaryCrossover(parentA, parentB, childA, childB, numVariables, lowerBound, upperBound);
+  double normal = timer_normal.toc();
 
-  std::cout << "CHILD A: " << childA << std::endl;
-  std::cout << "CHILD B: " << childB << std::endl;
+  arma::wall_clock timer_vec;
+  timer_vec.tic();
+  SBX_Vectorised(parentA, parentB, childAVec, childBVec, numVariables, lowerBound, upperBound);
+  double vec = timer_vec.toc();
+
+  // std::cout << "CHILD A: " << childA << std::endl;
+  // std::cout << "CHILD B: " << childB << std::endl;
+  std::cout << "numVariables: " << numVariables << std::endl;
+  std::cout << "Timing for normal: " << normal << std::endl;
+  std::cout << "Timing for vectorised: " << vec << std::endl;
 }
